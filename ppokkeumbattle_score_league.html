@@ -1,0 +1,18 @@
+
+function leaguePanel(){
+ const p=document.getElementById("modal");p.style.display="block";
+ const rows=[{n:state.nick,s:state.highScore||0}].concat(state.friends.map((n,i)=>({n:n,s:Math.max(0,(state.highScore||state.score||10)-((i+1)*17)+Math.floor(Math.random()*30))}))).sort((a,b)=>b.s-a.s);
+ p.innerHTML='<button id="close">닫기</button><h2>🏆 최고 점수 / 리그</h2><div class="card">'+rows.map((r,i)=>'<div style="padding:8px;border-bottom:1px solid #ffffff18"><b>'+((i==0)?"👑":(i+1)+".")+' '+r.n+'</b><span style="float:right">'+r.s+'점</span></div>').join("")+'</div><p class="small">친구가 많을수록 리그전 상대가 늘어나.</p><button id="leagueFight">🏟️ 리그전 대결</button><div id="leagueResult" class="card">친구를 추가하고 리그전을 시작해!</div>';
+ document.getElementById("close").onclick=closeModal;
+ document.getElementById("leagueFight").onclick=()=>{
+   if(state.friends.length<1){toast("👥 친구를 1명 이상 추가해 줘.");return}
+   const opp="친구 "+(Math.floor(Math.random()*state.friends.length)+1);
+   const oppScore=Math.max(1,Math.floor((state.highScore||state.score||10)*(0.7+Math.random()*.6)));
+   const mine=state.score+Math.floor(Math.random()*100),win=mine>=oppScore;
+   if(win)state.score+=50;
+   if(state.score>state.highScore)state.highScore=state.score;
+   save();render();
+   document.getElementById("leagueResult").innerHTML=(win?"🏆 리그전 승리!":"💥 리그전 패배!")+"<br>내 점수: "+mine+"<br>"+opp+": "+oppScore+"<br>🏆 최고 점수: "+state.highScore;
+ };
+}
+

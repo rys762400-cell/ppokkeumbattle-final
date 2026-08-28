@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>뻐끔뻐끔 배틀</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#06324b;color:#fff}
+button{border:0;border-radius:12px;padding:11px 14px;margin:4px;font-weight:700;font-size:15px}
+input{padding:11px;border-radius:10px;border:0;width:100%;font-size:16px}
+#menu{min-height:100vh;padding:14px;text-align:center;background:linear-gradient(#06405d,#078aa2)}
+.card{background:#062a40dd;border-radius:16px;padding:13px;margin:9px 0}
+.row{display:flex;flex-wrap:wrap;justify-content:center;gap:4px}
+#fishPreview{height:170px;display:flex;align-items:center;justify-content:center}
+.fish{width:150px;height:90px;position:relative;filter:drop-shadow(0 0 8px #fff8)}
+.body{position:absolute;left:42px;top:20px;width:92px;height:56px;border:5px solid #073047;border-radius:55%;background:#ffb347}
+.tail{position:absolute;left:3px;top:21px;border-style:solid;border-width:27px 43px 27px 0;border-color:transparent #ffb347 transparent transparent}
+.eye{position:absolute;left:109px;top:34px;width:12px;height:12px;border-radius:50%;background:#073047;box-shadow:0 0 0 4px white}
+.small{font-size:12px;opacity:.8}
+#game{display:none;position:fixed;inset:0;width:100%;height:100%;background:#0787a5;touch-action:none;-webkit-user-select:none;user-select:none}
+#hud{display:none;position:fixed;top:7px;left:7px;right:7px;z-index:5;gap:5px;flex-wrap:wrap}
+.h{background:#06283de8;border-radius:8px;padding:7px;font-size:12px;font-weight:bold}
+.ctrl{display:none;position:fixed;z-index:6;width:78px;height:78px;border-radius:50%}
+#attack{right:14px;bottom:14px;background:#ffd34e}#skill{right:14px;bottom:105px;background:#d89aff}#run{right:105px;bottom:14px;background:#76e6ff}
+#joy{display:none;position:fixed;z-index:6;left:14px;bottom:14px;width:120px;height:120px;border-radius:50%;background:#ffffff22;border:2px solid #ffffff55}
+#stick{position:absolute;left:34px;top:34px;width:48px;height:48px;border-radius:50%;background:#ffffffaa}
+#modal{display:none;position:fixed;z-index:20;left:6%;right:6%;top:6%;bottom:6%;overflow:auto;background:#06283cf7;border-radius:18px;padding:15px}
+#toast{display:none;position:fixed;z-index:30;top:15%;left:50%;transform:translateX(-50%);background:#061f32f5;border-radius:12px;padding:12px 16px;font-weight:bold}
+</style>
+</head>
+<body>
+<section id="menu">
+<h1>🐟 뻐끔뻐끔 배틀</h1>
+<p>동해의 시작 물고기: <b>악마의 불가사리</b></p>
+<div id="fishPreview"><div class="fish"><div class="body"></div><div class="tail"></div><div class="eye"></div></div></div>
+<h2 id="fishName">악마의 불가사리</h2>
+<div id="stats"></div><div id="best"></div>
+<div class="card"><b>👤 닉네임</b><input id="nick" placeholder="닉네임" maxlength="12"><button id="saveNick">저장</button></div>
+<div class="card"><div class="row">
+<button id="start">⚔️ 전투 시작</button>
+<button id="regions">🌊 지역 옮기기</button>
+<button id="ai">🍀 운이 좋으면 강화되는 대결</button>
+<button id="leader">👑 리더 인증</button>
+<button id="account">🔑 계정 연동 번호</button>
+<button id="friends">👥 친구 초대</button>
+<button id="league">🏆 리그전</button>
+<button id="idle">🌙 방치 성장</button>
+</div></div>
+<div class="card"><b>🐠 물고기 수집·해제</b><p class="small">맵에서 물고기를 먹으면 수집 수가 1 올라가고 필요한 수를 채우면 해제돼.</p><div id="fishList" class="row"></div></div>
+<div class="card">🪙 코인: <b id="coins">50</b>　🏆 최고 점수: <b id="best2">0</b></div>
+</section>
+
+<canvas id="game"></canvas>
+<div id="hud"><span class="h" id="wave"></span><span class="h" id="hp"></span><span class="h" id="lv"></span><span class="h" id="gcoins"></span><span class="h" id="score"></span><span class="h" id="cool"></span></div>
+<div id="joy"><div id="stick"></div></div>
+<button class="ctrl" id="attack">⚔️<br>공격</button>
+<button class="ctrl" id="skill">✨<br>스킬</button>
+<button class="ctrl" id="run">💨<br>달리기</button>
+<div id="modal"></div><div id="toast"></div>
+
+<script>
+"use strict";
+const fish=[
+["⭐","악마의 불가사리",12,110],["🐡","복어",16,125],["🐟","멸치",10,90],["🐠","산호 물고기",14,120],
+["🦈","상어",25,180],["🐙","문어",30,210],["🪼","해파리",34,230],["🐢","바다거북",39,260],
+["🐋","전설 고래",48,320],["🐉","해룡",62,390],["🦑","심해 오징어",72,440],["🐬","돌고래",78,470]];
+const need=[1,5,10,15,20,25,30,35,40,45,50,55];
+const regions=[
+["동해",80,[0,1,2,3,4]],["지중해",100,[1,2,4,5]],["북해",150,[3,5,6,7]],
+["카리브해",200,[2,4,7,8]],["태평양",300,[6,7,8,9,10,11]],["???해",500,[8,9,10,11]]];
+const KEY="PBB_NEW_GAME_V1";
+function getCode(){let c=localStorage.getItem("PBB_ACCOUNT");if(!/^\d{8}$/.test(c||"")){c=String(Math.floor(10000000+Math.random()*90000000));localStorage.setItem("PBB_ACCOUNT",c)}return c}
+let state={nick:"플레이어",sel:0,unlocked:1,coins:50,lv:1,xp:0,growth:1,stage:0,cleared:0,score:0,best:0,aiBonus:0,idlePower:0,lastSeen:Date.now(),account:getCode(),counts:Array(fish.length).fill(0),friends:[]};
+try{let s=JSON.parse(localStorage.getItem(KEY));if(s)state={...state,...s}}catch(e){}
+if(!Array.isArray(state.counts))state.counts=Array(fish.length).fill(0);
+while(state.counts.length<fish.length)state.counts.push(0);
+const $=id=>document.getElementById(id),canvas=$("game"),ctx=canvas.getContext("2d");
+let running=false,player=null,enemies=[],pickups=[],wave=1,time=20,atkCd=0,skillCd=0,moveX=0,moveY=0,fast=false,last=0;
+function save(){state.lastSeen=Date.now();localStorage.setItem(KEY,JSON.stringify(state))}
+function toast(t){$("toast").textContent=t;$("toast").style.display="block";clearTimeout(window.toastT);window.toastT=setTimeout(()=>$("toast").style.display="none",1400)}
+function sound(a,b,d){try{let c=window.ac||(window.ac=new AudioContext()),o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);g.gain.value=.055;o.frequency.value=a;o.frequency.exponentialRampToValueAtTime(b,c.currentTime+d);o.start();o.stop(c.currentTime+d)}catch(e){}}
+function render(){
+ if(state.sel>=state.unlocked)state.sel=0;
+ $("nick").value=state.nick;$("fishName").textContent=fish[state.sel][1];
+ $("stats").textContent="⚔️ 공격 "+Math.round(fish[state.sel][2]*state.growth+state.aiBonus+state.idlePower)+"　❤️ HP "+Math.round(fish[state.sel][3]*state.growth)+"　⭐ Lv."+state.lv;
+ $("best").textContent="🏆 최고 점수 "+state.best+"점";$("coins").textContent=state.coins;$("best2").textContent=state.best;
+ $("fishList").innerHTML="";
+ fish.forEach((f,i)=>{let b=document.createElement("button");b.textContent=(i<state.unlocked?f[0]+" "+f[1]:"🔒 "+f[1])+" "+state.counts[i]+"/"+need[i];b.disabled=i>=state.unlocked;b.onclick=()=>{state.sel=i;save();render()};$("fishList").appendChild(b)})
+}
+function modal(html){$("modal").innerHTML=html;$("modal").style.display="block"}
+function close(){ $("modal").style.display="none" }
+function showRegions(){modal("<button id='x'>닫기</button><h2>🌊 지역</h2>"+regions.map((r,i)=>"<div class='card'><b>"+(i+1)+". "+r[0]+"</b><br>"+r[1]+" 웨이브<br><button data-r='"+i+"' "+(i<=state.cleared?"":"disabled")+">"+(i<=state.cleared?"입장":"🔒 잠김")+"</button></div>").join(""));$("x").onclick=close;$("modal").querySelectorAll("[data-r]").forEach(b=>b.onclick=()=>{state.stage=+b.dataset.r;save();close();render()})}
+function showLeader(){modal("<button id='x'>닫기</button><h2>👑 리더 인증</h2><p class='small'>리더 코드를 입력해.</p><input id='lc' inputmode='numeric' maxlength='8' placeholder='8자리 코드'><button id='ok'>인증하기</button>");$("x").onclick=close;$("ok").onclick=()=>{if($("lc").value==="50974266"){toast("👑 리더 인증 성공!");close()}else toast("❌ 리더 코드가 틀렸어.")}}
+function showAccount(){modal("<button id='x'>닫기</button><h2>🔑 계정 연동 번호</h2><p>내 번호</p><input readonly value='"+state.account+"'><p class='small'>사람마다 무작위로 만들어지고 이 기기에 저장돼.</p>");$("x").onclick=close}
+function showFriends(){let code=localStorage.getItem("PBB_FRIEND")||String(Math.floor(100000+Math.random()*900000));localStorage.setItem("PBB_FRIEND",code);let link=location.href.split("#")[0]+"#friend="+code;modal("<button id='x'>닫기</button><h2>👥 친구 초대</h2><p>친구 코드: <b>"+code+"</b></p><input readonly value='"+link+"'><button id='copy'>📋 링크 복사</button><button id='accept'>✅ 친구 수락</button>");$("x").onclick=close;$("copy").onclick=()=>{navigator.clipboard?.writeText(link);toast("📋 링크 복사 완료")};$("accept").onclick=()=>{if(!state.friends.includes("친구"))state.friends.push("친구");save();toast("👥 친구 수락 완료")}}
+function showLeague(){if(!state.friends.length){toast("👥 먼저 친구를 추가해 줘.");return}let rows=[{n:state.nick,s:state.best},...state.friends.map((n,i)=>({n:"친구 "+(i+1),s:Math.max(0,state.best-20+i*7)}))].sort((a,b)=>b.s-a.s);modal("<button id='x'>닫기</button><h2>🏆 리그전</h2>"+rows.map((r,i)=>"<div class='card'>"+(i+1)+"위　<b>"+r.n+"</b>　"+r.s+"점</div>").join("")+"<button id='fight'>⚔️ 리그전 대결</button><div id='result'></div>");$("x").onclick=close;$("fight").onclick=()=>{let opp=50+Math.floor(Math.random()*300),me=state.score+Math.floor(Math.random()*100),win=me>=opp;if(win)state.score+=50;if(state.score>state.best)state.best=state.score;save();$("result").innerHTML=(win?"🏆 승리!":"💥 패배!")+"<br>내 점수 "+me+" / 상대 "+opp+"<br>최고 점수 "+state.best;render()}}
+function aiBattle(){modal("<button id='x'>닫기</button><h2>🍀 운이 좋으면 강화되는 대결</h2><p>승리하면 공격력 +0.5, 패배하면 공격력 -0.5</p><button id='f'>대결 시작</button><div id='r' class='card'></div>");$("x").onclick=close;$("f").onclick=()=>{let me=fish[state.sel],op=fish[Math.floor(Math.random()*state.unlocked)],a=me[2]*state.growth+state.lv*3+state.aiBonus+state.idlePower+Math.random()*30,b=op[2]+Math.random()*30,win=a>=b;state.aiBonus=win?state.aiBonus+.5:Math.max(-10,state.aiBonus-.5);if(win)state.coins+=10;else state.coins=Math.max(0,state.coins-2);save();$("r").innerHTML=win?"🏆 승리! 공격력 +0.5":"💥 패배! 공격력 -0.5";render()}}
+function idle(){let c=Math.min(144,Math.floor((Date.now()-state.lastSeen)/18000000));if(c){state.idlePower+=c;state.coins+=c*5;state.xp+=c*10;while(state.xp>=100){state.xp-=100;state.lv++;state.growth+=.03}save();toast("🌙 방치 성장 +"+c)}else toast("🌙 아직 5시간이 지나지 않았어.");render()}
+function start(){let pool=regions[state.stage][2];if(!pool.includes(state.sel)){toast("❌ 이 지역에서 이 물고기는 사용할 수 없어.");return}running=true;wave=1;time=20;atkCd=0;skillCd=0;moveX=moveY=0;player={x:innerWidth/2,y:innerHeight/2,r:28,hp:fish[state.sel][3]*state.growth,max:fish[state.sel][3]*state.growth,atk:fish[state.sel][2]*state.growth+state.aiBonus+state.idlePower};enemies=[];pickups=[];for(let i=0;i<7;i++)spawn();$("menu").style.display="none";canvas.style.display="block";$("hud").style.display="flex";["joy","attack","skill","run"].forEach(id=>$(id).style.display="block");resize();toast("⚔️ 전투 시작!")}
+function resize(){canvas.width=innerWidth;canvas.height=innerHeight}
+function spawn(){let p=regions[state.stage][2],fi=p[Math.floor(Math.random()*p.length)];enemies.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height,r:18,fi,hp:45+wave*4,max:45+wave*4,s:45+Math.random()*55,tx:Math.random()*canvas.width,ty:Math.random()*canvas.height,t:0})}
+function update(dt){if(!running)return;atkCd=Math.max(0,atkCd-dt);skillCd=Math.max(0,skillCd-dt);player.x=Math.max(20,Math.min(canvas.width-20,player.x+moveX*(fast?300:180)*dt));player.y=Math.max(20,Math.min(canvas.height-20,player.y+moveY*(fast?300:180)*dt));time-=dt;if(time<=0){time=20;if(wave<regions[state.stage][1])wave++;else{state.cleared=Math.max(state.cleared,state.stage+1);save();end();toast("🏆 지역 클리어!");return}}if(enemies.length<14&&Math.random()<dt*.3)spawn();if(Math.random()<dt*.9&&pickups.length<8){let p=regions[state.stage][2],fi=p[Math.floor(Math.random()*p.length)];pickups.push({x:30+Math.random()*(canvas.width-60),y:50+Math.random()*(canvas.height-100),fi,r:15})}
+for(let i=pickups.length-1;i>=0;i--){let p=pickups[i];if(Math.hypot(p.x-player.x,p.y-player.y)<player.r+p.r){state.counts[p.fi]++;state.score+=10;if(state.score>state.best)state.best=state.score;sound(500,900,.08);toast("🐟 "+fish[p.fi][1]+" +10점 "+state.counts[p.fi]+"/"+need[p.fi]);if(state.counts[p.fi]>=need[p.fi]&&p.fi>=state.unlocked){state.unlocked=Math.min(fish.length,p.fi+1);toast("🎉 "+fish[p.fi][1]+" 해제!")}pickups.splice(i,1);save()}}
+for(let e of enemies){e.t-=dt;if(e.t<=0){e.t=1+Math.random()*2;e.tx=Math.random()*canvas.width;e.ty=Math.random()*canvas.height}let dx=e.tx-e.x,dy=e.ty-e.y,d=Math.hypot(dx,dy)||1;e.x+=dx/d*e.s*dt;e.y+=dy/d*e.s*dt;if(Math.hypot(e.x-player.x,e.y-player.y)<42)player.hp-=7*dt}if(player.hp<=0){end();toast("💫 전투 종료")}}
+function attack(){if(!running||atkCd>0)return;atkCd=.1;sound(170,70,.12);for(let e of enemies)if(Math.hypot(e.x-player.x,e.y-player.y)<115){e.hp-=player.atk;if(e.hp<=0){state.score+=20;if(state.score>state.best)state.best=state.score;e.dead=true;sound(130,60,.14)}}enemies=enemies.filter(e=>!e.dead);save()}
+function skill(){if(!running||skillCd>0)return;skillCd=8;sound(500,1100,.18);for(let e of enemies)if(Math.hypot(e.x-player.x,e.y-player.y)<230)e.hp-=player.atk*4;enemies=enemies.filter(e=>e.hp>0);toast("✨ 스킬 발동!")}
+function end(){running=false;["hud","joy","attack","skill","run"].forEach(id=>$(id).style.display="none");canvas.style.display="none";$("menu").style.display="block";render()}
+function drawFish(x,y,r,c){ctx.save();ctx.translate(x,y);ctx.fillStyle=c;ctx.strokeStyle="#073047";ctx.lineWidth=3;ctx.beginPath();ctx.ellipse(0,0,r,r*.65,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.beginPath();ctx.moveTo(-r*.7,0);ctx.lineTo(-r*1.35,-r*.65);ctx.lineTo(-r*1.35,r*.65);ctx.closePath();ctx.fill();ctx.stroke();ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(r*.45,-r*.2,r*.16,0,Math.PI*2);ctx.fill();ctx.fillStyle="#073047";ctx.beginPath();ctx.arc(r*.48,-r*.2,r*.08,0,Math.PI*2);ctx.fill();ctx.restore()}
+function draw(){if(!running)return;ctx.clearRect(0,0,canvas.width,canvas.height);ctx.fillStyle="#0787a5";ctx.fillRect(0,0,canvas.width,canvas.height);for(let p of pickups){ctx.beginPath();ctx.strokeStyle="#bdf7ff";ctx.lineWidth=3;ctx.arc(p.x,p.y,p.r+4,0,Math.PI*2);ctx.stroke();drawFish(p.x,p.y,11,fishColor(p.fi))}for(let e of enemies){drawFish(e.x,e.y,e.r,fishColor(e.fi));ctx.fillStyle="#222";ctx.fillRect(e.x-18,e.y-e.r-8,36,4);ctx.fillStyle="#7cff7c";ctx.fillRect(e.x-18,e.y-e.r-8,36*Math.max(0,e.hp/e.max),4)}drawFish(player.x,player.y,30,fishColor(state.sel));$("wave").textContent="🌊 "+wave+"/"+regions[state.stage][1];$("hp").textContent="❤️ "+Math.ceil(player.hp);$("lv").textContent="⭐ Lv."+state.lv;$("gcoins").textContent="🪙 "+state.coins;$("score").textContent="🏆 "+state.score;$("cool").textContent=skillCd?"✨ "+skillCd.toFixed(1):"✨ 준비"}
+function fishColor(i){return["#ffb347","#45c7ff","#ff9f68","#7bd389","#ff6b9a","#b88cff","#7ee7e7","#f5d76e","#ff6f61","#9be15d","#55c1ff","#f78fb3"][i%12]}
+function loop(t){let dt=Math.min(.033,(t-(last||t))/1000);last=t;update(dt);draw();requestAnimationFrame(loop)}
+$("saveNick").onclick=()=>{if($("nick").value.trim()){state.nick=$("nick").value.trim();save();toast("닉네임 저장!")}};
+$("start").onclick=start;$("regions").onclick=showRegions;$("leader").onclick=showLeader;$("account").onclick=showAccount;$("friends").onclick=showFriends;$("league").onclick=showLeague;$("ai").onclick=aiBattle;$("idle").onclick=idle;
+$("attack").onpointerdown=attack;$("skill").onpointerdown=skill;$("run").onpointerdown=()=>fast=true;$("run").onpointerup=$("run").onpointercancel=()=>fast=false;
+let joyDown=false,joyId=null;
+function joySet(e){
+  const r=$("joy").getBoundingClientRect();
+  let x=e.clientX-r.left-r.width/2,y=e.clientY-r.top-r.height/2;
+  const d=Math.hypot(x,y)||1,m=42;
+  if(d>m){x=x/d*m;y=y/d*m}
+  moveX=x/m;moveY=y/m;
+  $("stick").style.transform="translate("+x+"px,"+y+"px)";
+}
+function joyStop(){
+  joyDown=false;joyId=null;moveX=0;moveY=0;
+  $("stick").style.transform="translate(0,0)";
+}
+$("joy").addEventListener("pointerdown",e=>{
+  e.preventDefault();joyDown=true;joyId=e.pointerId;
+  try{$("joy").setPointerCapture(e.pointerId)}catch(_){}
+  joySet(e);
+});
+$("joy").addEventListener("pointermove",e=>{
+  if(!joyDown||e.pointerId!==joyId)return;
+  e.preventDefault();joySet(e);
+});
+$("joy").addEventListener("pointerup",e=>{if(e.pointerId===joyId)joyStop()});
+$("joy").addEventListener("pointercancel",joyStop);
+$("joy").addEventListener("lostpointercapture",joyStop);
+$("joy").addEventListener("touchstart",e=>{
+  e.preventDefault();
+  const t=e.changedTouches[0];joyDown=true;joyId="touch";
+  joySet({clientX:t.clientX,clientY:t.clientY});
+},{passive:false});
+$("joy").addEventListener("touchmove",e=>{
+  e.preventDefault();
+  if(!joyDown)return;
+  const t=e.changedTouches[0];
+  joySet({clientX:t.clientX,clientY:t.clientY});
+},{passive:false});
+$("joy").addEventListener("touchend",e=>{e.preventDefault();joyStop()},{passive:false});
+$("joy").addEventListener("touchcancel",joyStop,{passive:false});
+idle();render();requestAnimationFrame(loop);
+</script>
+</body>
+</html>

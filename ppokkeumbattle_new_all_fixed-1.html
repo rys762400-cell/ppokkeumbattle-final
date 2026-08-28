@@ -1,0 +1,95 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>뻐끔뻐끔 배틀</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,sans-serif;background:#06394c;color:#fff;overflow:hidden}
+button{background:#0788a8;color:#fff;border:0;border-radius:13px;padding:13px 8px;font-weight:900;font-size:15px}button:active{transform:scale(.96)}
+#home{position:absolute;inset:0;overflow:auto;background:linear-gradient(#46d4e3,#087f9b 48%,#032e45);padding:10px}.wrap{width:min(700px,95vw);margin:auto}
+.title{text-align:center;font-size:34px;font-weight:1000;text-shadow:0 4px 10px #002c38}.sub{text-align:center;font-size:12px;margin-bottom:8px}
+.card{background:#03273bea;border:1px solid #ffffff35;border-radius:18px;padding:12px;margin:9px 0}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.wide{grid-column:1/-1}
+.hero{height:190px;background:#0b829a;border-radius:19px;overflow:hidden}.hero canvas{width:100%;height:100%}.pill{display:inline-block;background:#0b4c5d;border-radius:10px;padding:6px 9px;font-size:12px}.muted{font-size:12px;opacity:.8}
+#battle{position:absolute;inset:0;background:#08677e}.hide{display:none!important}#game{position:absolute;inset:0;width:100%;height:100%}
+#hud{position:absolute;top:7px;left:7px;right:7px;display:flex;justify-content:space-between;pointer-events:none}.hb{background:#001d2ddd;border-radius:11px;padding:7px 9px;font-size:12px}
+#hp{width:145px;height:9px;background:#17272b;border-radius:8px;overflow:hidden}#hpf{display:block;height:100%;width:100%;background:#43df69}
+#joy{position:absolute;left:14px;bottom:14px;width:140px;height:140px;border:3px solid #ffffff55;border-radius:50%;background:#ffffff18;touch-action:none}#stick{position:absolute;left:50%;top:50%;width:52px;height:52px;margin:-26px;border-radius:50%;background:#fff}
+.action{position:absolute;border-radius:50%;border:2px solid #fff9;color:#fff;font-weight:1000}.attack{right:17px;bottom:19px;width:86px;height:86px;background:#d34c57;font-size:24px}.skill{right:116px;bottom:41px;width:63px;height:63px;background:#744ac8;font-size:11px}
+#toast{position:absolute;top:62px;left:50%;transform:translateX(-50%);background:#001a2ddd;padding:8px 13px;border-radius:11px;opacity:0}
+input{font-size:15px}
+</style></head><body>
+<section id="home"><div class="wrap">
+<div class="title">🐟 뻐끔뻐끔 배틀</div><div class="sub">먹고 성장하는 바다 배틀</div>
+<div class="hero"><canvas id="preview"></canvas></div>
+<div class="card"><div class="grid">
+<button id="battleBtn">🌊 배틀 시작</button><button id="teamBtn">👥 팀 배틀</button>
+<button id="friendBtn">🤝 친구 대결</button><button id="raidBtn">👑 보스 레이드</button>
+<button id="bubbleBtn" class="wide">🫧 버블장</button></div></div>
+<div class="card"><b>🐟 내 물고기</b><div id="fishInfo" style="margin:8px 0;font-weight:900"></div>
+<div class="grid"><button id="prev">◀ 이전</button><button id="next">다음 ▶</button></div></div>
+<div class="card"><b>📖 물고기 도감</b><div id="book" class="grid" style="margin-top:8px"></div></div>
+<div class="card"><b>🎟️ 물고기 뽑기</b><div class="muted" style="margin:6px 0">하루 한 번 무료</div>
+<button id="gacha" class="wide">🎁 물고기 뽑기</button><div id="gachaResult" style="text-align:center;margin-top:7px;font-weight:900"></div></div>
+<div class="card"><b>🤝 친구 / 다른 폰</b><div class="grid"><button id="makeRoom">방 만들기</button><button id="joinRoom">방 참가</button></div>
+<input id="roomInput" placeholder="방 코드" style="width:100%;padding:11px;border:0;border-radius:10px;margin-top:8px">
+<div id="roomState" class="muted" style="margin-top:7px">방 없음</div></div>
+<div class="card"><b>👑 리더 코드</b><div style="margin:7px 0">내 코드: <strong id="leader"></strong></div>
+<div class="grid"><input id="leaderInput" placeholder="리더 코드 입력" style="padding:11px;border:0;border-radius:10px"><button id="leaderCheck">인증</button></div>
+<div id="leaderState" class="muted" style="margin-top:7px">리더 코드로 설정을 관리할 수 있어.</div></div>
+</div></section>
+
+<section id="battle" class="hide"><canvas id="game"></canvas>
+<div id="hud"><div class="hb">🐟 <b id="name"></b><br>⭐ Lv.<span id="level">1</span> · 🍽️ <span id="eaten">0</span><br>❤️<div id="hp"><i id="hpf"></i></div></div>
+<div class="hb">🌊 Wave <b id="wave">1</b>/80<br>⏱️ <span id="clock">20</span>초<br>📈 <span id="xp">0</span>% · 🏆 <span id="score">0</span></div></div>
+<div id="toast"></div><div id="joy"><div id="stick"></div></div>
+<button id="skill" class="action skill">✨<br>스킬</button><button id="attack" class="action attack">⚔️</button></section>
+
+<script>
+const fish=[
+["상어","🦈","#6d8999"],["복어","🐡","#d69b3e"],["문어","🐙","#a8507e"],["해파리","🪼","#62cde5"],
+["거북","🐢","#4d9067"],["고래","🐋","#477f9c"],["돌고래","🐬","#5b98b0"],["불가사리","⭐","#a62bc5"],
+["해룡","🐉","#626ead"],["오징어","🦑","#62498d"],["청새치","🐟","#4e899f"],["가오리","〰️","#526e8e"]];
+let prog=JSON.parse(localStorage.getItem("ppb_save")||'{"level":1,"xp":0,"best":0,"unlocked":1}');
+let fi=0,leader=localStorage.getItem("ppb_leader")||"LEADER-"+Math.random().toString(36).slice(2,8).toUpperCase();
+localStorage.setItem("ppb_leader",leader);
+const $=x=>document.getElementById(x),pc=$("preview").getContext("2d"),gc=$("game").getContext("2d");
+function resize(){let d=devicePixelRatio;$("preview").width=$("preview").clientWidth*d;$("preview").height=$("preview").clientHeight*d;$("game").width=innerWidth*d;$("game").height=innerHeight*d;pc.setTransform(d,0,0,d,0,0);gc.setTransform(d,0,0,d,0,0)}addEventListener("resize",resize);resize();
+
+function fishDraw(g,x,y,r,col,rot=0){
+g.save();g.translate(x,y);g.rotate(rot);let gr=g.createRadialGradient(-r*.3,-r*.4,1,0,0,r);gr.addColorStop(0,"#fff");gr.addColorStop(.18,col);gr.addColorStop(1,"#122832");g.fillStyle=gr;g.strokeStyle="#06151d";g.lineWidth=2;
+g.beginPath();g.ellipse(0,0,r,r*.55,0,0,7);g.fill();g.stroke();g.beginPath();g.moveTo(-r*.65,0);g.lineTo(-r*1.35,-r*.5);g.lineTo(-r*1.25,0);g.lineTo(-r*1.35,r*.5);g.closePath();g.fill();g.stroke();g.fillStyle="#fff";g.beginPath();g.arc(r*.42,-r*.18,r*.13,0,7);g.fill();g.fillStyle="#111";g.beginPath();g.arc(r*.46,-r*.18,r*.055,0,7);g.fill();g.fillStyle="#071018";g.beginPath();g.ellipse(r*.75,0,r*.16,r*.07,0,0,7);g.fill();g.restore()}
+function drawPlayer(g,x,y,r,idx,stage){
+let col=fish[idx][2];if(stage<=2){g.save();g.translate(x,y);let gr=g.createRadialGradient(-r*.25,-r*.3,1,0,0,r);gr.addColorStop(0,"#fff");gr.addColorStop(.2,col);gr.addColorStop(1,col+"55");g.fillStyle=gr;g.strokeStyle="#dfffff99";g.beginPath();g.arc(0,0,r*.82,0,7);g.fill();g.stroke();g.fillStyle="#fff";g.beginPath();g.arc(r*.25,-r*.18,r*.11,0,7);g.fill();g.fillStyle="#111";g.beginPath();g.arc(r*.28,-r*.18,r*.05,0,7);g.fill();g.restore()}else fishDraw(g,x,y,r,col,0)}
+function label(g,x,y,text,color="#ffe66d"){g.font="900 12px system-ui";g.textAlign="center";let w=g.measureText(text).width+10;g.fillStyle="#00131dcc";g.fillRect(x-w/2,y-14,w,18);g.fillStyle=color;g.fillText(text,x,y)}
+function homeDraw(){let w=$("preview").clientWidth,h=$("preview").clientHeight;pc.clearRect(0,0,w,h);pc.fillStyle="#108ca1";pc.fillRect(0,0,w,h);drawPlayer(pc,w/2,h*.48,55,fi,Math.max(1,Math.min(6,1+Math.floor((prog.level-1)/2))));pc.fillStyle="#fff";pc.font="900 20px system-ui";pc.textAlign="center";pc.fillText(fish[fi][1]+" "+fish[fi][0],w/2,h-15);$("fishInfo").textContent=fish[fi][1]+" "+fish[fi][0]+" · ⭐ Lv."+prog.level+" · 🏆 최고 "+prog.best;$("leader").textContent=leader;$("book").innerHTML=fish.map((f,i)=>`<div class="pill" style="text-align:center">${i<prog.unlocked?f[1]+" "+f[0]:"🔒 미해제"}</div>`).join("")}
+$("prev").onclick=()=>{fi=(fi+fish.length-1)%fish.length;if(fi>=prog.unlocked)fi=0;homeDraw()};$("next").onclick=()=>{fi=(fi+1)%fish.length;if(fi>=prog.unlocked)fi=0;homeDraw()};
+let used=localStorage.getItem("ppb_gacha")===new Date().toISOString().slice(0,10);
+$("gacha").onclick=()=>{if(used){toast("오늘 뽑기는 이미 사용했어");return}used=true;localStorage.setItem("ppb_gacha",new Date().toISOString().slice(0,10));let r=Math.random()*100,i=r<1?Math.floor(Math.random()*fish.length):Math.floor(Math.random()*Math.min(4,fish.length));prog.unlocked=Math.max(prog.unlocked,i+1);localStorage.setItem("ppb_save",JSON.stringify(prog));fi=i;$("gachaResult").textContent="🎉 "+fish[i][1]+" "+fish[i][0]+" 획득!";homeDraw();toast("🎁 획득!")};
+$("makeRoom").onclick=()=>{$("roomState").textContent="방 코드: ROOM-"+Math.random().toString(36).slice(2,8).toUpperCase();toast("방 생성!")};$("joinRoom").onclick=()=>{let v=$("roomInput").value.trim();$("roomState").textContent=v?"방 참가 완료: "+v:"방 코드를 입력해줘"};
+$("leaderCheck").onclick=()=>{let ok=$("leaderInput").value.trim()===leader;$("leaderState").textContent=ok?"✅ 리더 인증 완료":"❌ 코드가 맞지 않아";toast(ok?"리더 인증!":"코드 확인")};
+$("battleBtn").onclick=()=>start("solo");$("teamBtn").onclick=()=>start("team");$("friendBtn").onclick=()=>start("friend");$("raidBtn").onclick=()=>start("raid");$("bubbleBtn").onclick=()=>start("bubble");
+
+let running=false,px,py,hp,wave,timer,score,eaten,xp,ax=0,ay=0,cd=0,scd=0,enemies=[],foods=[],allies=[];
+function start(mode){running=true;px=innerWidth/2;py=innerHeight*.58;hp=100;wave=1;timer=20;score=0;eaten=0;xp=prog.xp;enemies=[];foods=[];allies=[];for(let i=0;i<8;i++)spawnEnemy();for(let i=0;i<30;i++)spawnFood();if(mode!=="solo"&&mode!=="bubble")for(let i=0;i<3;i++)allies.push({x:px-55+i*55,y:py+30});$("home").classList.add("hide");$("battle").classList.remove("hide");$("name").textContent=fish[fi][0];toast("🌊 배틀 시작!")}
+
+function spawnEnemy(){let a=Math.random()*7,d=240+Math.random()*520;let el=Math.max(1,prog.level+(Math.random()<.7?Math.floor(Math.random()*3)-1:Math.floor(Math.random()*4)+1));let idx=el<3?0:Math.floor(Math.random()*Math.max(1,prog.unlocked));let r=Math.min(90,12+el*2.8+Math.random()*6);enemies.push({x:px+Math.cos(a)*d,y:py+Math.sin(a)*d,r,level:el,hp:40+el*12,a:0,w:Math.random()*7})}
+function spawnFood(){let q=Math.random(),r=q<.55?6+Math.random()*4:q<.85?11+Math.random()*5:q<.97?18+Math.random()*6:28+Math.random()*8;foods.push({x:25+Math.random()*(innerWidth-50),y:100+Math.random()*(innerHeight-145),r,xp:Math.round(r*.9)})}
+function attack(){if(!running||cd>0)return;cd=.3;let hit=false;for(let i=enemies.length-1;i>=0;i--){let e=enemies[i];if(Math.hypot(e.x-px,e.y-py)<105){if(e.level<prog.level||e.r<30){enemies.splice(i,1);eaten++;xp+=e.r>25?22:Math.max(5,Math.round(e.r));score+=10}else hp=Math.max(0,hp-10);hit=true}}if(xp>=100){let ups=Math.floor(xp/100);xp%=100;prog.level+=ups;prog.unlocked=Math.min(fish.length,1+Math.floor(prog.level/3));localStorage.setItem("ppb_save",JSON.stringify(prog));toast("⭐ Lv."+prog.level+" 성장!")}else toast(hit?"⚔️ 공격!":"🐟 작은 물고기를 먹어봐")}
+function skill(){if(!running||scd>0)return;scd=5;hp=Math.min(100,hp+30);for(let i=enemies.length-1;i>=0;i--)if(Math.hypot(enemies[i].x-px,enemies[i].y-py)<220)enemies.splice(i,1);toast("✨ 스킬 사용 · HP 회복")}
+$("attack").onpointerdown=e=>{e.preventDefault();attack()};$("skill").onpointerdown=e=>{e.preventDefault();skill()};
+let drag=false;function joy(e){let r=$("joy").getBoundingClientRect(),dx=e.clientX-r.left-r.width/2,dy=e.clientY-r.top-r.height/2,m=48,d=Math.hypot(dx,dy)||1;if(d>m){dx=dx/d*m;dy=dy/d*m}ax=dx/m;ay=dy/m;$("stick").style.transform=`translate(${dx}px,${dy}px)`}
+$("joy").onpointerdown=e=>{drag=true;$("joy").setPointerCapture(e.pointerId);joy(e)};$("joy").onpointermove=e=>{if(drag)joy(e)};$("joy").onpointerup=$("joy").onpointercancel=()=>{drag=false;ax=ay=0;$("stick").style.transform="translate(0,0)"};
+
+function loop(){if(running){let dt=.016;cd=Math.max(0,cd-dt);scd=Math.max(0,scd-dt);timer-=dt;px=Math.max(30,Math.min(innerWidth-30,px+ax*105*dt));py=Math.max(100,Math.min(innerHeight-30,py+ay*105*dt));
+for(let e of enemies){let dx=px-e.x,dy=py-e.y,d=Math.hypot(dx,dy)||1;e.x+=dx/d*(18+e.level*.5)*dt+Math.cos(e.w+performance.now()/1800)*3*dt;e.y+=dy/d*(18+e.level*.5)*dt+Math.sin(e.w+performance.now()/1800)*3*dt;e.a=Math.atan2(dy,dx);if(d<45&&e.level>=prog.level&&Math.random()<dt*.7)hp=Math.max(0,hp-3)}
+for(let i=foods.length-1;i>=0;i--){let f=foods[i];if(Math.hypot(f.x-px,f.y-py)<34+f.r){foods.splice(i,1);xp+=f.xp;eaten++;score+=f.xp;if(xp>=100){let ups=Math.floor(xp/100);xp%=100;prog.level+=ups;prog.unlocked=Math.min(fish.length,1+Math.floor(prog.level/3));localStorage.setItem("ppb_save",JSON.stringify(prog));toast("⭐ Lv."+prog.level+"!")}spawnFood()}}
+if(enemies.length<5)spawnEnemy();if(timer<=0){wave++;timer=20;for(let i=0;i<Math.min(8,4+Math.floor(wave/10));i++)spawnEnemy()}
+gc.clearRect(0,0,innerWidth,innerHeight);let og=gc.createLinearGradient(0,0,0,innerHeight);og.addColorStop(0,"#198fa4");og.addColorStop(1,"#06445f");gc.fillStyle=og;gc.fillRect(0,0,innerWidth,innerHeight);
+for(let f of foods){gc.fillStyle="#69cde9aa";gc.strokeStyle="#eaffff";gc.beginPath();gc.arc(f.x,f.y,f.r,0,7);gc.fill();gc.stroke();gc.fillStyle="#fff9";gc.beginPath();gc.arc(f.x-f.r*.3,f.y-f.r*.3,Math.max(1.5,f.r*.15),0,7);gc.fill()}
+for(let e of enemies){fishDraw(gc,e.x,e.y,e.r,fish[e.idx][2],e.a);label(gc,e.x,e.y-e.r-17,"Lv."+e.level,e.level>prog.level?"#ff7777":"#baffc4")}
+for(let a of allies){drawPlayer(gc,a.x,a.y,24,fi,3);label(gc,a.x,a.y-38,"Lv."+prog.level)}
+let stage=Math.max(1,Math.min(6,1+Math.floor((prog.level-1)/2)));let pr=Math.min(105,24+prog.level*3);drawPlayer(gc,px,py,pr,fi,stage);label(gc,px,py-pr-18,"Lv."+prog.level);gc.fillStyle="#111b";gc.fillRect(px-32,py-pr-8,64,7);gc.fillStyle="#43df69";gc.fillRect(px-32,py-pr-8,64*hp/100,7);
+$("level").textContent=prog.level;$("eaten").textContent=eaten;$("xp").textContent=Math.floor(xp);$("wave").textContent=wave;$("clock").textContent=Math.ceil(timer);$("score").textContent=score;$("hpf").style.width=hp+"%";
+if(hp<=0){running=false;prog.best=Math.max(prog.best,score);prog.xp=xp;localStorage.setItem("ppb_save",JSON.stringify(prog));$("battle").classList.add("hide");$("home").classList.remove("hide");homeDraw();$("gachaResult").textContent="🏆 기록 "+score+" · 최고 "+prog.best+" · Lv."+prog.level}}
+requestAnimationFrame(loop)}
+function toast(v){$("toast").textContent=v;$("toast").style.opacity=1;clearTimeout(window._t);window._t=setTimeout(()=>$("toast").style.opacity=0,900)}
+homeDraw();requestAnimationFrame(loop);
+</script></body></html>
